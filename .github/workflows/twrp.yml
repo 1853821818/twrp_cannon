@@ -1,0 +1,113 @@
+name: Build TWRP 12.1 for Redmi Note 9 5G (cannon)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 360
+
+    steps:
+      - name: Display run info
+        run: |
+          df -h /
+          free -h
+          nproc
+
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/local/share/boost /usr/lib/jvm || true
+          sudo -E apt-get -qq purge azure-cli ghc* zulu* llvm* firefox google* dotnet* \
+            powershell openjdk* mongodb* moby* || true
+          sudo docker image prune -a -f || true
+          df -h /
+
+      - name: Install dependencies
+        run: |
+          sudo -E apt-get -qq update || true
+          sudo -E apt-get -qq install \
+            git ccache cpio automake flex bison gperf build-essential \
+            zip curl wget zlib1g-dev libxml2-utils lzop pngcrush rsync \
+            schedtool squashfs-tools xsltproc unzip python-is-python3 \
+            openjdk-11-jdk-headless || true
+          # libtinfo5/libncurses5 are missing on 22.04 but required by A12 prebuilts
+          wget -q http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.2-0ubuntu2_amd64.deb \
+            -O /tmp/libtinfo5.deb || true
+          wget -q http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.2-0ubuntu2_amd64.deb \
+            -O /tmp/libncurses5.deb || true
+          sudo dpkg -i /tmp/libtinfo5.deb /tmp/libncurses5.deb || true
+          sudo apt-get -qq install -f || true
+          sudo update-alternatives --set java /usr/lib/jvm/java-11-openjdk-amd64/bin/java || true
+          sudo update-alternatives --set javac /usr/lib/jvm/java-11-openjdk-amd64/bin/javac || true
+          java -version
+
+      - name: Add swap
+        run: |
+          sudo swapoff -a || true
+          sudo dd if=/dev/zero of=/swapfile bs=1M count=4096
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile
+          sudo swapon /swapfile
+          free -h
+
+      - name: Configure git
+        run: |
+          git config --global user.name "twrp-builder"
+          git config --global user.email "twrp-builder@users.noreply.github.com"
+          git config --global --add safe.directory '*'
+
+      - name: Checkout device tree repo
+        uses: actions/checkout@v4
+
+      - name: Sync TWRP 12.1 minimal source
+        run: |
+          mkdir -p ~/bin
+          curl -s https://storage.googleapis.com/git-repo-downloads/repo > ~/bin/repo
+          chmod a+x ~/bin/repo
+          export PATH=~/bin:$PATH
+          mkdir -p ~/twrp && cd ~/twrp
+          repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
+          repo sync -c --no-tags --depth=1 -j8 || repo sync -c --no-tags --depth=1 -j4
+          df -h /
+
+      - name: Inject cannon device tree
+        run: |
+          mkdir -p ~/twrp/device/xiaomi
+          cp -a device/xiaomi/cannon ~/twrp/device/xiaomi/
+          ls -la ~/twrp/device/xiaomi/cannon
+          ls -la ~/twrp/device/xiaomi/cannon/prebuilt
+
+      - name: Build recovery image
+        run: |
+          export PATH=~/bin:$PATH
+          export ALLOW_MISSING_DEPENDENCIES=true
+          export LC_ALL=C
+          cd ~/twrp
+          source build/envsetup.sh
+          lunch twrp_cannon-eng
+          mka recoveryimage -j$(nproc)
+
+      - name: Upload recovery image
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-12.1_cannon
+          path: |
+            /home/runner/twrp/out/target/product/cannon/recovery.img
+          if-no-files-found: error
+
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: twrp-12.1_cannon_build_logs
+          path: |
+            /home/runner/twrp/out/soong.log
+            /home/runner/twrp/out/build.log
+            /home/runner/twrp/out/error.log
+            /home/runner/twrp/out/verbose.log.gz
+          if-no-files-found: warn
