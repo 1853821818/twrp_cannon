@@ -71,7 +71,7 @@ jobs:
           export PATH=~/bin:$PATH
           mkdir -p ~/twrp && cd ~/twrp
           repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-12.1
-          repo sync -c --no-tags --depth=1 -j8 || repo sync -c --no-tags --depth=1 -j4
+          repo sync -c --no-tags -j8 || repo sync -c --no-tags -j4
           df -h /
 
       - name: Inject cannon device tree
