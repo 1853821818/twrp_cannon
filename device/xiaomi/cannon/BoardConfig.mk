@@ -21,10 +21,9 @@ BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2 buildvariant=user androidboot.selinux=permissive
 BOARD_KERNEL_BASE := 0x40078000
 BOARD_KERNEL_PAGESIZE := 2048
-BOARD_KERNEL_OFFSET := 0x00008000
-BOARD_RAMDISK_OFFSET := 0x07c08000
-BOARD_TAGS_OFFSET := 0x0bc08000
-BOARD_MKBOOTIMG_ARGS := --header_version 2 --board ""
+# A12 mkbootimg rejects header v2 without a separate --dtb. Use v0 (MTK standard,
+# dtb stays embedded in the kernel image) and pass the stock load offsets directly.
+BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x07c08000 --tags_offset 0x0bc08000 --board ""
 
 # AVB
 BOARD_AVB_ENABLE := false
