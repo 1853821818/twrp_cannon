@@ -89,6 +89,14 @@ jobs:
           cd ~/twrp
           source build/envsetup.sh
           lunch twrp_cannon-eng
+          # Diagnose: confirm board flags reach the build system
+          get_build_var BOARD_USES_VENDORIMAGE || true
+          # Workaround: the system root tree carries /vendor and /product entries that
+          # conflict with TWRP's real vendor/product directories inside the recovery
+          # ramdisk (rsync refuses to replace a non-empty directory with a symlink).
+          # Exclude them from the recovery ramdisk rsync; recovery keeps TWRP's own dirs.
+          sed -i 's|rsync -a --exclude=sdcard |rsync -a --exclude=sdcard --exclude=/root/vendor --exclude=/root/product |' build/make/core/Makefile
+          grep -n "exclude=/root/vendor" build/make/core/Makefile
           mka recoveryimage -j$(nproc)
 
       - name: Upload recovery image
