@@ -99,6 +99,17 @@ jobs:
           grep -n "exclude=/root/vendor" build/make/core/Makefile
           mka recoveryimage -j$(nproc)
 
+      - name: Repack recovery image to stock layout (DTB/DTBO/AVB footer)
+        run: |
+          cd ~/twrp
+          # Rebuild the final image with the stock MIUI/OriginOS v2 layout:
+          # stock kernel + TWRP ramdisk + stock recovery_dtbo + stock dtb,
+          # then pad to the 128MB partition size and write an AVB footer.
+          # The stock LK failed to boot images without the recovery_dtbo
+          # section and with a dtb extracted from a wrong offset.
+          python3 device/xiaomi/cannon/fixup_recovery.py
+          ls -la out/target/product/cannon/recovery.img
+
       - name: Upload recovery image
         if: success()
         uses: actions/upload-artifact@v4
