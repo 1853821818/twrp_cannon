@@ -35,12 +35,15 @@ BOARD_BOOTIMAGE_PARTITION_SIZE := 67108864
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 134217728
 BOARD_USES_RECOVERY_AS_BOOT := false
 
-# Dynamic partitions
+# Dynamic partitions (vendor/product are logical partitions inside super,
+# so their ramdisk roots must be mount-point directories, not symlinks)
 TARGET_USES_DYNAMIC_PARTITIONS := true
+BOARD_USES_VENDORIMAGE := true
+BOARD_USES_PRODUCTIMAGE := true
 BOARD_SUPER_PARTITION_SIZE := 9126805504
 BOARD_SUPER_PARTITION_GROUPS := mtk_dynamic_partitions
 BOARD_MTK_DYNAMIC_PARTITIONS_SIZE := 9122611200
-BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := system vendor product system_ext odm
+BOARD_MTK_DYNAMIC_PARTITIONS_PARTITION_LIST := system vendor product
 
 # Filesystems
 BOARD_HAS_LARGE_FILESYSTEM := true
