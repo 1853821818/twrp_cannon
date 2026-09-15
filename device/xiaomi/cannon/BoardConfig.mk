@@ -16,14 +16,15 @@ TARGET_BOARD_PLATFORM := mt6853
 TARGET_NO_BOOTLOADER := true
 
 # Kernel (prebuilt from stock MIUI V14.0.6.0.SJECNXM recovery.img, Linux 4.14.186)
-TARGET_PREBUILT_KERNEL := $(LOCAL_PATH)/prebuilt/Image.gz-dtb
-BOARD_KERNEL_IMAGE_NAME := Image.gz-dtb
+TARGET_PREBUILT_KERNEL := $(LOCAL_PATH)/prebuilt/Image.gz
+BOARD_KERNEL_IMAGE_NAME := Image.gz
 BOARD_KERNEL_CMDLINE := bootopt=64S3,32N2,64N2 buildvariant=user androidboot.selinux=permissive
 BOARD_KERNEL_BASE := 0x40078000
 BOARD_KERNEL_PAGESIZE := 2048
-# A12 mkbootimg rejects header v2 without a separate --dtb. Use v0 (MTK standard,
-# dtb stays embedded in the kernel image) and pass the stock load offsets directly.
-BOARD_MKBOOTIMG_ARGS := --kernel_offset 0x00008000 --ramdisk_offset 0x07c08000 --tags_offset 0x0bc08000 --board ""
+# Match the stock boot image layout exactly: header v2 with a separate DTB section
+# (dtb_addr = tags_addr = 0x4bc80000). This LK does not boot the legacy v0 format
+# with a kernel-embedded dtb - it fails and falls back to the system.
+BOARD_MKBOOTIMG_ARGS := --header_version 2 --kernel_offset 0x00008000 --ramdisk_offset 0x07c08000 --tags_offset 0x0bc08000 --dtb $(LOCAL_PATH)/prebuilt/dtb.img --dtb_offset 0x0bc08000 --board ""
 
 # AVB
 BOARD_AVB_ENABLE := false
