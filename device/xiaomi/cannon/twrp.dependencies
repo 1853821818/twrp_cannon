@@ -1,0 +1,7 @@
+[
+  {
+    "repository": "android_device_external_twrp-common",
+    "target_path": "device/external/twrp-common",
+    "branch": "android-12.1"
+  }
+]
