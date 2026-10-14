@@ -1,0 +1,6 @@
+service thh-2-0 /system/bin/vendor.microtrust.hardware.thh@2.0-service
+    user root
+    group root
+    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib:/system/lib64:/system/lib:/sbin
+    disabled
+    seclabel u:r:recovery:s0
