@@ -1,16 +1,35 @@
-# Inherit from those products. Most specific first.
-$(call inherit-product, $(SRC_TARGET_DIR)/product/aosp_base.mk)
-$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+# Copyright (C) 2022 The Android Open Source Project
+# Copyright (C) 2022 SebaUbuntu's TWRP device tree generator
+# SPDX-License-Identifier: Apache-2.0
 
-# Inherit from our custom product configuration
-$(call inherit-product, vendor/twrp/config/common.mk)
-
-# Inherit from cannon device
-$(call inherit-product, device/xiaomi/cannon/device.mk)
-
-# Device identifier. This must come after all inclusions
 PRODUCT_DEVICE := cannon
-PRODUCT_NAME := twrp_cannon
-PRODUCT_BRAND := Redmi
-PRODUCT_MODEL := M2007J22C
-PRODUCT_MANUFACTURER := Xiaomi
+PRODUCT_NAME := twrp_$(PRODUCT_DEVICE)
+PRODUCT_BRAND := redmi
+PRODUCT_MODEL := Redmi Note 9T
+PRODUCT_MANUFACTURER := xiaomi
+PRODUCT_RELEASE_NAME := $(PRODUCT_DEVICE)
+
+
+# Inherit from the Device Tree itself.
+$(call inherit-product, device/xiaomi/cannon/cannon-device.mk)
+
+# Inherit from Prebuilt Products.
+$(call inherit-product, $(SRC_TARGET_DIR)/product/core_64_bit.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/gsi_keys.mk)
+$(call inherit-product, $(SRC_TARGET_DIR)/product/base.mk)
+
+# Inherit from TWRP-common Stuff, if building TWRP.
+$(call inherit-product-if-exists, vendor/twrp/config/common.mk)
+
+# Inherit from PBRP-common Stuff, if building PBRP.
+$(call inherit-product-if-exists, vendor/pb/config/common.mk)
+
+# Inherit from OMNI-common Stuff, if building from below Android 10.
+$(call inherit-product-if-exists, vendor/omni/config/common.mk)
+
+PRODUCT_GMS_CLIENTID_BASE := android-$(PRODUCT_MANUFCATURER)
+
+PRODUCT_BUILD_PROP_OVERRIDES += \
+    PRIVATE_BUILD_DESC="cannon-user 12 SP1A.210812.016 V13.0.2.0.SJEMIXM release-keys"
+
+BUILD_FINGERPRINT := redmi/cannon_global/cannon:12/SP1A.210812.016/V13.0.2.0.SJEMIXM:user/release-keys
