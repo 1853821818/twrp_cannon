@@ -1,0 +1,13 @@
+# Mediatek
+ro.mediatek.platform=MT6853
+
+# ADB
+ro.adb.secure=0
+
+# AVB
+ro.boot.avb_version=2.0
+ro.boot.vbmeta.avb_version=2.0
+
+# Persist
+persist.sys.timezone=Asia/Manila
+persist.sys.fuse.passthrough.enable=true
