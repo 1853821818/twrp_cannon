@@ -1,0 +1,89 @@
+import /init.recovery.microtrust.rc
+
+on init
+    symlink /dev/block/platform/bootdevice /dev/block/bootdevice
+    mkdir /mnt/vendor/persist 0700 root root
+    mount ext4 /dev/block/platform/bootdevice/by-name/persist /persist
+    export LD_LIBRARY_PATH /system/lib64:/vendor/lib64:/vendor/lib64/hw
+
+on fs
+    install keyring
+    installkey /data
+
+on post-fs
+    start boot-hal-1-1
+    class_start early_hal
+    exec -- /system/bin/fsverity_init --load-verified-keys
+    
+on boot
+    start vibrator-1-3
+    start health-hal-2-1
+    setprop sys.usb.config adb
+
+on property:ro.crypto.state=encrypted && property:ro.crypto.type=file
+    start teei_daemon
+    setprop crypto.ready 1
+
+on property:sys.listeners.registered=true && property:vendor.sys.listeners.registered=true
+    start teei_daemon
+    start keymaster-4-1-beanpo
+    start keymaster_attestation-1-1
+    start vendor.gatekeeper-1-0
+    start thh-2-0
+    start soter-1-0
+    start vendor.secure_element
+
+on property:hwservicemanager.ready=true && property:crypto.ready=1
+    start teei_daemon
+    start keymaster-4-1-beanpo
+    start keymaster_attestation-1-1
+    start vendor.gatekeeper-1-0
+    start thh-2-0
+    start soter-1-0
+    start vendor.secure_element
+
+service keystore_auth /system/bin/keystore_auth
+    oneshot
+    user root
+    group root
+    disabled
+    seclabel u:r:recovery:s0
+
+service keystore /system/bin/keystore /tmp/misc/keystore
+    user root
+    group root drmrpc readproc
+    disabled
+    seclabel u:r:recovery:s0
+
+service keymaster-4-1-beanpod /system/bin/android.hardware.keymaster@4.1-service.beanpod
+    interface android.hardware.keymaster@4.0::IKeymasterDevice default
+    interface android.hardware.keymaster@4.1::IKeymasterDevice default
+    user root
+    group root drmrpc
+    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib:/system/lib64:/system/lib:/sbin
+    disabled
+    seclabel u:r:recovery:s0
+
+service gatekeeper-1-0 /system/bin/android.hardware.gatekeeper@1.0-service
+    interface android.hardware.gatekeeper@1.0::IGatekeeper default
+    user root
+    group root
+    setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib:/system/lib64:/system/lib:/sbin
+    disabled
+    seclabel u:r:recovery:s0
+
+service vibrator-1-3 /system/bin/hw/android.hardware.vibrator@1.3-service.mtk
+    class hal
+    disabled
+    user root
+    group root
+    seclabel u:r:recovery:s0
+
+on property:twrp.all.users.decrypted=true
+    stop teei_daemon
+    stop keymaster-4-1-beanpod
+    stop keymaster_attestation-1-1
+    stop vendor.gatekeeper-1-0
+    stop thh-2-0
+    stop soter-1-0
+    stop vendor.secure_element
