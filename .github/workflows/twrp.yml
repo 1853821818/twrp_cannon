@@ -34,7 +34,6 @@ jobs:
             zip curl wget zlib1g-dev libxml2-utils lzop pngcrush rsync \
             schedtool squashfs-tools xsltproc unzip python-is-python3 \
             openjdk-11-jdk-headless || true
-          # libtinfo5/libncurses5 are missing on 22.04 but required by A12 prebuilts
           wget -q http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libtinfo5_6.2-0ubuntu2_amd64.deb \
             -O /tmp/libtinfo5.deb || true
           wget -q http://archive.ubuntu.com/ubuntu/pool/universe/n/ncurses/libncurses5_6.2-0ubuntu2_amd64.deb \
@@ -89,26 +88,40 @@ jobs:
           cd ~/twrp
           source build/envsetup.sh
           lunch twrp_cannon-eng
-          # Diagnose: confirm board flags reach the build system
           get_build_var BOARD_USES_VENDORIMAGE || true
-          # Workaround: the system root tree carries /vendor and /product entries that
-          # conflict with TWRP's real vendor/product directories inside the recovery
-          # ramdisk (rsync refuses to replace a non-empty directory with a symlink).
-          # Exclude them from the recovery ramdisk rsync; recovery keeps TWRP's own dirs.
           sed -i 's|rsync -a --exclude=sdcard |rsync -a --exclude=sdcard --exclude=/root/vendor --exclude=/root/product |' build/make/core/Makefile
           grep -n "exclude=/root/vendor" build/make/core/Makefile
           mka recoveryimage -j$(nproc)
 
-      - name: Repack recovery image to stock layout (DTB/DTBO/AVB footer)
+      - name: Verify and upload recovery image
         run: |
           cd ~/twrp
-          # Rebuild the final image with the stock MIUI/OriginOS v2 layout:
-          # stock kernel + TWRP ramdisk + stock recovery_dtbo + stock dtb,
-          # then pad to the 128MB partition size and write an AVB footer.
-          # The stock LK failed to boot images without the recovery_dtbo
-          # section and with a dtb extracted from a wrong offset.
-          python3 device/xiaomi/cannon/fixup_recovery.py
           ls -la out/target/product/cannon/recovery.img
+          python3 -c "
+import struct
+with open('out/target/product/cannon/recovery.img','rb') as f:
+    hdr = f.read(1056)
+magic = hdr[0:8].decode('ascii','replace')
+kernel_size = struct.unpack_from('<I', hdr, 8)[0]
+ramdisk_size = struct.unpack_from('<I', hdr, 16)[0]
+header_version = struct.unpack_from('<I', hdr, 40)[0]
+page_size = struct.unpack_from('<I', hdr, 36)[0]
+print('magic:', magic)
+print('header_version:', header_version)
+print('page_size:', page_size)
+print('kernel_size:', kernel_size)
+print('ramdisk_size:', ramdisk_size)
+if header_version >= 1:
+    dtbo_size = struct.unpack_from('<I', hdr, 1024)[0]
+    dtbo_offset = struct.unpack_from('<Q', hdr, 1028)[0]
+    print('recovery_dtbo_size:', dtbo_size)
+    print('recovery_dtbo_offset:', dtbo_offset)
+if header_version >= 2:
+    dtb_size = struct.unpack_from('<I', hdr, 1040)[0]
+    dtb_offset = struct.unpack_from('<Q', hdr, 1048)[0]
+    print('dtb_size:', dtb_size)
+    print('dtb_offset:', dtb_offset)
+"
 
       - name: Upload recovery image
         if: success()
